@@ -22,7 +22,7 @@ def load_model():
     :return: Загруженная модель
     """
     log('Preparing model...')
-    model_url = "https://tfhub.dev/google/movenet/singlepose/lightning/4"
+    model_url = "https://www.kaggle.com/models/google/movenet/frameworks/TensorFlow2/variations/singlepose-thunder/versions/4"
     model = hub.load(model_url)
     log('Model prepared')
     return model.signatures['serving_default']
@@ -37,7 +37,7 @@ def process_frames(model, frames):
     """
     processed_keypoints = []
     for frame in tqdm(frames, total=frames.shape[0], desc='Recognizing skeletons'):
-        input_tensor = tf.image.resize_with_pad(frame, 192, 192)
+        input_tensor = tf.image.resize_with_pad(frame, 256, 256)
         input_tensor = tf.cast(tf.expand_dims(input_tensor, axis=0), dtype=tf.int32)
 
         outputs = model(input_tensor)

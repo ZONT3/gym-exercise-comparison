@@ -84,7 +84,7 @@ def find_best_distances(model, sample_path, target_path, step=0.05, required_min
 
         offset += step
 
-    distances_mean = np.array(np.mean(x) for x in distances)
+    distances_mean = np.array([np.mean(x) for x in distances])
     best_idx = int(np.argmin(distances_mean))
 
     return distances[best_idx], keypoints_args, initial_offset + step * best_idx

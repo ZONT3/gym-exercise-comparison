@@ -1,4 +1,4 @@
-FROM continuumio/anaconda3:2023.09-0
+FROM continuumio/miniconda3:23.10.0-1
 
 RUN apt update &&\
     apt upgrade -y &&\

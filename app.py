@@ -22,11 +22,11 @@ def setup_db():
     cursor = conn.cursor()
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS history (
-        user_id INTEGER,
+        user_id TEXT,
         exercise_id INTEGER,
         exercise_score TEXT,
-        mean_distance TEXT,
-        offset TEXT,
+        mean_distance REAL,
+        offset REAL,
         timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY (user_id, exercise_id, timestamp)
     )
@@ -41,7 +41,7 @@ setup_db()
 @app.route('/process', methods=['POST'])
 def process_video():
     target_name = int(request.form['exercise_id'])
-    user_id = int(request.form['user_id'])
+    user_id = str(request.form['user_id'])
     file = request.files['video']
 
     input_dir = Path('./input_video')
@@ -89,27 +89,32 @@ def process_video():
 
 @app.route('/find', methods=['GET'])
 def find():
-    user_id = int(request.args.get('user_id'))
+    user_id = str(request.args.get('user_id'))
     exercise_id = int(request.args.get('exercise_id'))
+    limit = request.args.get('limit', 10, type=int)
 
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
 
     cursor.execute('''
-    SELECT exercise_score, mean_distance, offset FROM history
+    SELECT exercise_score, mean_distance, offset, timestamp FROM history
     WHERE user_id=? AND exercise_id=?
-    ORDER BY timestamp DESC LIMIT 1
-    ''', (user_id, exercise_id))
+    ORDER BY timestamp DESC LIMIT ?
+    ''', (user_id, exercise_id, limit))
 
-    result = cursor.fetchone()
+    results = cursor.fetchall()
     conn.close()
 
-    if result:
-        return jsonify({
-            'exercise_score': str(result[0]),
-            'mean_distance': float(result[1]),
-            'offset': float(result[2])
-        })
+    if results:
+        return jsonify([
+            {
+                'exercise_score': str(record[0]),
+                'mean_distance': float(record[1]),
+                'offset': float(record[2]),
+                'timestamp': str(record[3])
+            }
+            for record in results
+        ])
     else:
         return jsonify({'error': 'No matching entry found'}), 404
 

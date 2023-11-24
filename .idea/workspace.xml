@@ -4,15 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="16f45722-f8ce-484c-8ef6-cd1138374830" name="Changes" comment="Change to miniconda">
-      <change afterPath="$PROJECT_DIR$/.idea/dataSources.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/sqldialects.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/gec.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/gec.iml" afterDir="false" />
+    <list default="true" id="16f45722-f8ce-484c-8ef6-cd1138374830" name="Changes" comment="API rework and caching implementation">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/app.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/run_preprocessing.py" beforeDir="false" afterPath="$PROJECT_DIR$/run_preprocessing.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/gec.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/gec.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/gec_visualize.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/gec_visualize.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -180,7 +174,7 @@
       <workItem from="1700785937589" duration="130000" />
       <workItem from="1700786081192" duration="3004000" />
       <workItem from="1700789744911" duration="9341000" />
-      <workItem from="1700811059742" duration="22948000" />
+      <workItem from="1700811059742" duration="26101000" />
     </task>
     <task id="LOCAL-00001" summary="Preprocessing task">
       <created>1700785988597</created>
@@ -231,7 +225,21 @@
       <option name="project" value="LOCAL" />
       <updated>1700823161790</updated>
     </task>
-    <option name="localTasksCounter" value="8" />
+    <task id="LOCAL-00008" summary="API rework and caching implementation">
+      <created>1700853893179</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1700853893179</updated>
+    </task>
+    <task id="LOCAL-00009" summary="API rework and caching implementation">
+      <created>1700853975999</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1700853975999</updated>
+    </task>
+    <option name="localTasksCounter" value="10" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -244,18 +252,8 @@
     <MESSAGE value="Accuracy computing" />
     <MESSAGE value="Environment vars for configuration" />
     <MESSAGE value="Change to miniconda" />
-    <option name="LAST_COMMIT_MESSAGE" value="Change to miniconda" />
-  </component>
-  <component name="XDebuggerManager">
-    <breakpoint-manager>
-      <breakpoints>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/app.py</url>
-          <line>91</line>
-          <option name="timeStamp" value="1" />
-        </line-breakpoint>
-      </breakpoints>
-    </breakpoint-manager>
+    <MESSAGE value="API rework and caching implementation" />
+    <option name="LAST_COMMIT_MESSAGE" value="API rework and caching implementation" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/gec$run_preprocessing_cache.coverage" NAME="run_preprocessing cache Coverage Results" MODIFIED="1700844869501" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />

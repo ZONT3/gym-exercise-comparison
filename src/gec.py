@@ -1,3 +1,4 @@
+import logging
 import os
 import sys
 from pathlib import Path
@@ -9,11 +10,12 @@ import tensorflow as tf
 import tensorflow_hub as hub
 from tqdm import tqdm
 
+logging.basicConfig(stream=sys.stderr, format='%(asctime)s %(levelname)s: %(message)s', level=logging.INFO)
+logger = logging.getLogger('gec')
+
 
 def log(*args, **kwargs):
-    if 'file' not in kwargs:
-        kwargs['file'] = sys.stderr
-    print(*args, **kwargs)
+    logger.info(*args, **kwargs)
 
 
 def load_model():

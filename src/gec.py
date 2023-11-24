@@ -1,3 +1,4 @@
+import os
 import sys
 from pathlib import Path
 from typing import Optional, Tuple
@@ -22,8 +23,14 @@ def load_model():
     :return: Загруженная модель
     """
     log('Preparing model...')
-    model_url = "https://www.kaggle.com/models/google/movenet/frameworks/TensorFlow2/variations/singlepose-thunder/versions/4"
-    model = hub.load(model_url)
+    model_url = "https://www.kaggle.com/models/google/movenet/frameworks/TensorFlow2/variations/singlepose-thunder" \
+                "/versions/4"
+    model_hash = "ba50920a0dee34563eef6669110aab92916d223a"
+    model_path = Path(os.environ.get('TFHUB_CACHE_DIR', None) or './tfhub_cache') / model_hash
+    if model_path.is_dir():
+        model = hub.load(str(model_path))
+    else:
+        model = hub.load(model_url)
     log('Model prepared')
     return model.signatures['serving_default']
 

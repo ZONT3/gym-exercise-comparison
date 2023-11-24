@@ -3,7 +3,7 @@ from argparse import ArgumentParser
 
 import numpy as np
 
-from gec import load_model, find_best_distances
+from gec import load_model, find_best_distances, compute_accuracy
 
 
 def main():
@@ -24,15 +24,18 @@ def main():
     distances, keypoints, offset = find_best_distances(model, sample_path, target_path,
                                                        step=float(args.step), initial_offset=float(args.initial_offset),
                                                        required_min_offset=float(args.required_offset))
+    mean_distance = np.mean(distances)
+    accuracy = compute_accuracy(distances)
 
     if args.visualize:
         from gec_visualize import visualize_keypoints
         visualize_keypoints(sample_path, target_path, *keypoints,
-                            crop_start=offset, title=f'Best offset: {offset:.2f}')
+                            crop_start=offset, title=f'Best offset: {offset:.2f}, dist: {mean_distance :.4f}, '
+                                                     f'acc: {int(accuracy * 100):02d}%')
 
     # print('Best distances:', distances, file=sys.stderr)
     print('Best offset:', offset, file=sys.stderr)
-    print(np.mean(distances))
+    print(accuracy)
 
 
 if __name__ == '__main__':

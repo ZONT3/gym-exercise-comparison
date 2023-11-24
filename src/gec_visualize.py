@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 import tensorflow as tf
 
-from gec import _load_videos, _read_frames, _normalize_keypoints, log, process_frames, load_model
+from gec import _load_videos, _read_frames, _normalize_keypoints, log, process_frames, load_model, compute_accuracy
 
 
 def visualize_keypoints(sample_path, target_path, keypoints_sample, keypoints_target, framerate,
@@ -65,14 +65,22 @@ def _visualization_loop(framerate, frames_sample, frames_target, keypoints_sampl
 
             keypoints_s_normalized = _normalize_keypoints(keypoints_s[0, :, :2])
             keypoints_t_normalized = _normalize_keypoints(keypoints_t[0, :, :2])
-            mean_distance = np.mean(np.sqrt(np.sum((keypoints_s_normalized - keypoints_t_normalized) ** 2, axis=1)))
+
+            distances = np.sqrt(np.sum(
+                (keypoints_s_normalized - keypoints_t_normalized) ** 2, axis=1
+            )).reshape((-1, 17))
+
+            distances *= keypoints_t[..., 2].reshape((-1, 17))
+            distances *= keypoints_s[..., 2].reshape((-1, 17))
+            mean_distance = np.mean(distances)
 
             videos_frame = np.concatenate((frame_sample_resized, frame_target_resized), axis=1)
 
             result_frame = np.zeros((videos_frame.shape[0] + 30, videos_frame.shape[1], 3), dtype=np.uint8)
             result_frame[:videos_frame.shape[0], :, :] = videos_frame
 
-            cv2.putText(result_frame, f"Frame: {idx:05d}, mean distance: {mean_distance:.4f}",
+            cv2.putText(result_frame, f"Frame: {idx:05d}, mean distance: {mean_distance:.4f}, "
+                                      f"accuracy: {int(compute_accuracy(distances) * 100) :02d}%",
                         (10, videos_frame.shape[0] + 20),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
 

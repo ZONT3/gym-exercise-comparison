@@ -128,14 +128,23 @@ def compute_distances(model, *, sample_path=None, target_path=None, crop_start=0
     if any(x is None for x in (keypoints_sample_cropped, keypoints_target_cropped)):
         return None, None
 
-    keypoints_sample_cropped = _normalize_keypoints(keypoints_sample_cropped[..., :2])
-    keypoints_target_cropped = _normalize_keypoints(keypoints_target_cropped[..., :2])
+    keypoints_sample_norm = _normalize_keypoints(keypoints_sample_cropped[..., :2])
+    keypoints_target_norm = _normalize_keypoints(keypoints_target_cropped[..., :2])
 
     distances = np.sqrt(
-        np.sum((keypoints_sample_cropped - keypoints_target_cropped) ** 2, axis=3)
+        np.sum((keypoints_sample_norm - keypoints_target_norm) ** 2, axis=3)
     ).reshape((-1, 17))
 
+    distances *= keypoints_target_cropped[..., 2].reshape((-1, 17))
+    distances *= keypoints_sample_cropped[..., 2].reshape((-1, 17))
+
     return distances, (keypoints_sample, keypoints_target, min_fps)
+
+
+def compute_accuracy(distances, lerp_min=0.10, lerp_max=0.005):
+    mean = np.mean(distances)
+    accuracy = (mean - lerp_min) / (lerp_max - lerp_min)
+    return max(min(accuracy, 1.), 0.)
 
 
 def _crop_keypoints(keypoints_sample, keypoints_target, crop_end, crop_start, framerate, sample_less_ok=True):

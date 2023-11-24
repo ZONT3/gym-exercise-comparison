@@ -1,3 +1,4 @@
+import _pickle as pkl
 import logging
 import os
 import sys
@@ -57,7 +58,8 @@ def process_frames(model, frames):
     return np.array(processed_keypoints)
 
 
-def find_best_distances(model, sample_path, target_path, step=0.05, required_min_offset=5., initial_offset=0.):
+def find_best_distances(model, sample_path, target_path, step=0.05, required_min_offset=5., initial_offset=0.,
+                        cache_dir=os.environ.get('GEC_CACHE', './keypoints_cache')):
     """
     Подобрать наилучший оффсет для видео пользователя и вывести расстояния для всех узлов скелета
     (в сравнении с видео от тренера)
@@ -67,6 +69,7 @@ def find_best_distances(model, sample_path, target_path, step=0.05, required_min
     :param step: Шаг подбора оффсета (сек)
     :param required_min_offset: подбирать оффсет как минимум до этого значения
     :param initial_offset: Начальное значение оффсета
+    :param cache_dir: Директория для кэширования обработанных видео тренера
     :return: Tuple[distances, keypoints_args, offset]:
             Наилучшие расстояния узлов скелета пользователя относительно тренера, формат:
                     [frames_count, keypoints_count (17)],
@@ -75,7 +78,7 @@ def find_best_distances(model, sample_path, target_path, step=0.05, required_min
     """
     # log(f'Trying offset {initial_offset}...')
     distance, keypoints_args = compute_distances(model, sample_path=sample_path, target_path=target_path,
-                                                 crop_start=initial_offset)
+                                                 crop_start=initial_offset, cache_dir=cache_dir)
     # log(f'Mean distance: {np.mean(distance)}')
 
     offset = initial_offset + step
@@ -84,7 +87,7 @@ def find_best_distances(model, sample_path, target_path, step=0.05, required_min
         distances.append(distance)
 
         # log(f'Trying offset {offset:.2f}...')
-        distance, _ = compute_distances(model, keypoints_args=keypoints_args, crop_start=offset,
+        distance, _ = compute_distances(model, keypoints_args=keypoints_args, crop_start=offset, cache_dir=cache_dir,
                                         sample_less_ok=(offset <= required_min_offset))
         # if distance is not None:
         #     log(f'Mean distance: {np.mean(distance)}')
@@ -100,7 +103,7 @@ def find_best_distances(model, sample_path, target_path, step=0.05, required_min
 
 
 def compute_distances(model, *, sample_path=None, target_path=None, crop_start=0., crop_end=None, sample_less_ok=True,
-                      keypoints_args: Optional[Tuple[np.ndarray, np.ndarray, float]] = None):
+                      cache_dir=None, keypoints_args: Optional[Tuple[np.ndarray, np.ndarray, float]] = None):
     """
     Сравнить видео пользователя с видео тренера и вывести расстояния между узлами их скелетов
     :param model: Модель MoveNet
@@ -109,6 +112,7 @@ def compute_distances(model, *, sample_path=None, target_path=None, crop_start=0
     :param crop_start: Обрезать видео пользователя с этой секунды
     :param crop_end: Обрезать видео пользователя до этой секунды
     :param sample_less_ok: Не возвращать None если обрезанное видео пользователя меньше по длине, чем тренера
+    :param cache_dir: Директория для кэширования обработанных видео тренера
     :param keypoints_args: Уже извлеченные скелеты обоих видео. Если задан - sample_path и target_path не используются
     :return: Расстояния узлов скелета пользователя относительно тренера, формат: [frames_count, keypoints_count (17)]
     """
@@ -116,7 +120,7 @@ def compute_distances(model, *, sample_path=None, target_path=None, crop_start=0
         if not sample_path or not target_path:
             raise ValueError('Paths should be specified if not using already extracted keypoints')
         keypoints_sample, keypoints_target, min_fps = _extract_keypoints(
-            model, sample_path, target_path
+            model, sample_path, target_path, cache_dir=cache_dir
         )
     else:
         keypoints_sample, keypoints_target, min_fps = keypoints_args
@@ -162,37 +166,101 @@ def _crop_keypoints(keypoints_sample, keypoints_target, crop_end, crop_start, fr
     return keypoints_sample_cropped, keypoints_target_cropped
 
 
-def _extract_keypoints(model, sample_path, target_path):
-    sample_video, target_video = _load_videos(sample_path, target_path)
+def _extract_keypoints(model, sample_path, target_path, cache_dir=None):
+    sample_video, target_video = _load_videos(sample_path, target_path, cache_dir is not None)
+
+    cache_name = Path(target_path).name
+    keypoints_target, framerate_target = _get_cached(cache_dir, cache_name) if cache_dir is not None else (None, None)
+
+    if keypoints_target is None and target_video is None:
+        raise FileNotFoundError(f'Target video not found both in cache and on path {target_path}')
 
     sample_fps = sample_video.get(cv2.CAP_PROP_FPS)
-    target_fps = target_video.get(cv2.CAP_PROP_FPS)
+    target_fps = target_video.get(cv2.CAP_PROP_FPS) if framerate_target is None else framerate_target
     min_fps = min(sample_fps, target_fps)
 
+    if keypoints_target is None:
+        frames_target = _read_frames(target_video, min_fps)
+        target_video.release()
+        keypoints_target = process_frames(model, frames_target)
+        _cache_kp(keypoints_target, min_fps, cache_dir, cache_name)
+    elif target_fps > min_fps:
+        keypoints_target = _reduce_framerate(keypoints_target, target_fps, min_fps)
+
     frames_sample = _read_frames(sample_video, min_fps)
-    frames_target = _read_frames(target_video, min_fps)
-
-    target_video.release()
     sample_video.release()
-
     keypoints_sample = process_frames(model, frames_sample)
-    keypoints_target = process_frames(model, frames_target)
 
     return keypoints_sample, keypoints_target, min_fps
 
 
-def _load_videos(sample_path, target_path):
+def cache_video(model, video_path, cache_dir):
+    video_path = Path(video_path)
+
+    if not video_path.is_file():
+        raise FileNotFoundError(f'Video file {str(video_path)} not found')
+
+    video = cv2.VideoCapture(str(video_path))
+    frames = _read_frames(video)
+    keypoints = process_frames(model, frames)
+    _cache_kp(keypoints, video.get(cv2.CAP_PROP_FPS), cache_dir, video_path.name)
+
+
+def _cache_kp(keypoints, framerate, cache_dir, video_name):
+    cache_dir = Path(cache_dir)
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    cache_file = cache_dir / 'keypoints.pkl'
+
+    try:
+        if cache_file.is_file():
+            with open(cache_file, 'rb') as f:
+                cache = pkl.load(f)
+        else:
+            cache = {}
+
+        cache[video_name] = (keypoints, framerate)
+
+        with open(cache_file, 'wb') as f:
+            pkl.dump(cache, f)
+
+    except Exception as e:
+        logger.exception(f'Cannot cache keypoints for {video_name}', exc_info=e)
+
+
+def _get_cached(cache_dir, video_name):
+    cache_dir = Path(cache_dir)
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    cache_file = cache_dir / 'keypoints.pkl'
+
+    if not cache_file.is_file():
+        return None, None
+
+    # noinspection PyBroadException
+    try:
+        with open(cache_file, 'rb') as f:
+            cache = pkl.load(f)
+        if video_name in cache:
+            log(f'Using cached target keypoints: {video_name}')
+            return cache[video_name]
+    except Exception as e:
+        logger.exception(f'Cannot load cached keypoints for {video_name}', exc_info=e)
+    return None, None
+
+
+def _load_videos(sample_path, target_path, target_missing_ok=False):
     sample_path = Path(sample_path)
     target_path = Path(target_path)
 
     if not sample_path.is_file():
         raise FileNotFoundError(f'Sample video not found: {str(sample_path)}')
-    if not target_path.is_file():
+    if not target_missing_ok and not target_path.is_file():
         raise FileNotFoundError(f'Target video not found: {str(target_path)}')
+    elif not target_path.is_file():
+        target_path = None
 
     log('Reading videos...')
     sample_video = cv2.VideoCapture(str(sample_path))
-    target_video = cv2.VideoCapture(str(target_path))
+    target_video = cv2.VideoCapture(str(target_path)) if target_path is not None else None
     return sample_video, target_video
 
 
@@ -215,9 +283,15 @@ def _normalize_keypoints(keypoints):
     return normalized_keypoints
 
 
-def _read_frames(video: cv2.VideoCapture, target_fps):
+def _reduce_framerate(frames, src_framerate, target_framerate):
+    frame_skip_ratio = src_framerate / target_framerate
+    new_frames = [x for i, x in enumerate(frames) if i % frame_skip_ratio < 1]
+    return np.stack(new_frames)
+
+
+def _read_frames(video: cv2.VideoCapture, target_framerate=None):
     frames = []
-    frame_skip_ratio = video.get(cv2.CAP_PROP_FPS) / target_fps
+    frame_skip_ratio = 1. if target_framerate is None else video.get(cv2.CAP_PROP_FPS) / target_framerate
     frame_counter = 0
 
     while True:

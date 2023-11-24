@@ -6,7 +6,7 @@ from pathlib import Path
 
 import numpy as np
 
-from gec import load_model
+from gec import load_model, cache_video
 from gec_visualize import single_visualize_keypoints
 
 
@@ -20,7 +20,13 @@ def main():
                                                                       'specified keypoints.json (created by -o option) '
                                                                       'and print all filenames with mean score equal '
                                                                       'or less than specified in this option')
+    parser.add_argument('--cache', action='store_true', help='Read directory and cache all video keypoints to default '
+                                                             'cache dir')
     args = parser.parse_args()
+
+    if args.cache:
+        cache_keypoints(args.path, os.environ.get('GEC_CACHE', './keypoints_cache'))
+        return
 
     if args.check:
         check_keypoints_scores(args.path, float(args.check))
@@ -41,6 +47,18 @@ def main():
             json_file.unlink(missing_ok=True)
             with open(json_file, 'w') as f:
                 json.dump({k: v.tolist() for k, v in keypoints.items()}, f)
+
+
+def cache_keypoints(video_dir, cache_dir):
+    video_dir = Path(video_dir)
+    if not video_dir.is_dir():
+        raise FileNotFoundError(f'Specified path is not a dir:, {video_dir}')
+
+    model = load_model()
+    for f in os.listdir(str(video_dir)):
+        file_path = video_dir / f
+        if file_path.is_file() and file_path.name.split('.')[-1] in ('mp4', 'mov'):
+            cache_video(model, file_path, cache_dir)
 
 
 def check_keypoints_scores(json_file: str, score: float):

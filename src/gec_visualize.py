@@ -111,8 +111,7 @@ def single_visualize_keypoints(video_path, title='KeyPoints Visualization', mode
     log('Reading video...')
     video = cv2.VideoCapture(str(video_path))
     framerate = video.get(cv2.CAP_PROP_FPS)
-
-    frames = _read_frames(video, framerate)
+    frames = _read_frames(video)
     video.release()
 
     if model is None:

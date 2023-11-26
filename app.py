@@ -4,11 +4,14 @@ from pathlib import Path
 
 import numpy as np
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 from werkzeug.utils import secure_filename
 
 from gec import load_model, find_best_distances, compute_accuracy
 
-app = Flask(__name__)
+app = Flask('gec')
+CORS(app)
+
 model = load_model()
 
 DB_FILE = os.environ.get('GEC_DATA_FILE', './data/history.db')

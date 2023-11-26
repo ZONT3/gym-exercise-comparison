@@ -76,24 +76,16 @@ def find_best_distances(model, sample_path, target_path, step=0.05, required_min
             Извлеченные скелеты (не обрезанные),
             Наилучший оффсет
     """
-    # log(f'Trying offset {initial_offset}...')
     distance, keypoints_args = compute_distances(model, sample_path=sample_path, target_path=target_path,
                                                  crop_start=initial_offset, cache_dir=cache_dir)
-    # log(f'Mean distance: {np.mean(distance)}')
 
     offset = initial_offset + step
     distances = []
     while offset <= required_min_offset or distance is not None:
         distances.append(distance)
 
-        # log(f'Trying offset {offset:.2f}...')
         distance, _ = compute_distances(model, keypoints_args=keypoints_args, crop_start=offset, cache_dir=cache_dir,
                                         sample_less_ok=(offset <= required_min_offset))
-        # if distance is not None:
-        #     log(f'Mean distance: {np.mean(distance)}')
-        # else:
-        #     log(f'Stop condition reached.')
-
         offset += step
 
     distances_mean = np.array([np.mean(x) for x in distances])
